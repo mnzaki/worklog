@@ -228,7 +228,9 @@ class WorkLogDB:
 
 	def list_since(self, since, showdate):
 		out = ''
+		total_time = 0
 		for entry in self.entries_since(since):
+			total_time += entry['duration']
 
 			if entry['unfinished']:
 				line = "%s (still running) - %s\n" % (self.sec2time(entry['duration']), entry['comment'])
@@ -239,6 +241,8 @@ class WorkLogDB:
 				line = "%s: %s" % (entry['date'], line)
 
 			out += line
+
+		out += "\nTotal time: %s" % self.sec2time(total_time)
 
 		return out
 
