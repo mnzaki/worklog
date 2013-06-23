@@ -6,6 +6,11 @@ import os.path
 import os
 import sys
 
+import datetime
+import calendar
+import time
+import dateutil.parser
+
 class WorkLogDB:
 
 	def __init__(self):
@@ -178,7 +183,7 @@ class WorkLogDB:
 				id
 			FROM worklog
 			WHERE
-				start > DATE(?)
+				start > DATETIME(?)
 		"""
 		stmt.execute(query, (since,))
 		self.db.commit()
@@ -225,30 +230,47 @@ class WorkLogDB:
 
 		return out
 
+	parsers = []
+
+	def _dutil_parse(self, s):
+		return dateutil.parser.parse(s)
+
+	parsers.append(_dutil_parse)
+
 	try:
 		import parsedatetime.parsedatetime
-		parser = parsedatetime.parsedatetime.Calendar()
-		def parse_date_time(self, inp):
-			return "%04i-%02i-%02i %02i:%02i:%02i" % self.parser.parse(inp)[0][0:6]
-	except:
-		import dateutil.parser
-		parser = dateutil.parser
-		def parse_date_time(self, inp):
-			return self.parser.parse(inp).__str__()
+		_pdt = parsedatetime.parsedatetime.Calendar()
+		def _pdt_parse(self, s):
+			tt = self._pdt.parse(s)
+			if tt[1] == 0: raise Exception
+			dt = datetime.datetime.fromtimestamp(time.mktime(tt[0]))
+			if tt[1] == 1: dt = datetime.datetime.fromtimestamp(time.mktime(dt.date().timetuple()))
+			return dt
+		parsers.append(_pdt_parse)
+	except: pass
 
 	def list_since(self, since, showdate):
-		if since != 'now':
+		for parse in self.parsers:
 			try:
-				since = self.parse_date_time(since)
-			except:
-				print "Could not parse '%s' as a time string" % since
-				if hasattr(self.parser, '__name__') and self.parser.__name__ == 'dateutil.parser':
-					print "For better datetime parsing please install parsedatetime from https://github.com/bear/parsedatetime"
-				sys.exit(1)
+				since = parse(self, since)
+			except: pass
+			else: return self.do_list_since(since, showdate)
+		print "Could not parse '%s' as a time string" % since
+		if not hasattr(self, '_pdt'):
+			print "For better datetime parsing please install parsedatetime from https://github.com/bear/parsedatetime"
+		sys.exit(1)
 
-		out = ''
+	def do_list_since(self, dt, showdate):
+		now = datetime.datetime.now()
+		if dt > now:
+			oneweek = datetime.timedelta(weeks=1)
+			while dt > now:
+				dt -= oneweek
+
+		out = "Listing work since %s\n\n" % dt
+
 		total_time = 0
-		for entry in self.entries_since(since):
+		for entry in self.entries_since(dt):
 			total_time += entry['duration']
 
 			if entry['unfinished']:

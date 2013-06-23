@@ -34,7 +34,7 @@ also do:
 
     work since yesterday
     work since 2 days ago
-    work since last monday
+    work since monday
 
 Yep, that's about it.
 
