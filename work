@@ -225,8 +225,27 @@ class WorkLogDB:
 
 		return out
 
+	try:
+		import parsedatetime.parsedatetime
+		parser = parsedatetime.parsedatetime.Calendar()
+		def parse_date_time(self, inp):
+			return "%04i-%02i-%02i %02i:%02i:%02i" % self.parser.parse(inp)[0][0:6]
+	except:
+		import dateutil.parser
+		parser = dateutil.parser
+		def parse_date_time(self, inp):
+			return self.parser.parse(inp).__str__()
 
 	def list_since(self, since, showdate):
+		if since != 'now':
+			try:
+				since = self.parse_date_time(since)
+			except:
+				print "Could not parse '%s' as a time string" % since
+				if hasattr(self.parser, '__name__') and self.parser.__name__ == 'dateutil.parser':
+					print "For better datetime parsing please install parsedatetime from https://github.com/bear/parsedatetime"
+				sys.exit(1)
+
 		out = ''
 		total_time = 0
 		for entry in self.entries_since(since):
