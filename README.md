@@ -29,6 +29,13 @@ done in the past:
     work since yyyy-mm-dd          -- list all tasks since the given date
     work sum                       -- Sum of work time, grouped by day
 
+If you install parsedatetime from https://github.com/bear/parsedatetime you can
+also do:
+
+    work since yesterday
+    work since 2 days ago
+    work since last monday
+
 Yep, that's about it.
 
 More fun
