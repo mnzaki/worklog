@@ -230,7 +230,18 @@ class WorkLogDB:
 
 		return out
 
+	def _date_to_datetime(self, d):
+		return datetime.datetime.combine(d, datetime.time.min)
+
 	parsers = []
+
+	def _now_parse(self, s):
+		if s == 'now':
+			return self._date_to_datetime(datetime.datetime.now().date())
+		else:
+			raise Exception
+
+	parsers.append(_now_parse)
 
 	def _dutil_parse(self, s):
 		return dateutil.parser.parse(s)
@@ -244,7 +255,7 @@ class WorkLogDB:
 			tt = self._pdt.parse(s)
 			if tt[1] == 0: raise Exception
 			dt = datetime.datetime.fromtimestamp(time.mktime(tt[0]))
-			if tt[1] == 1: dt = datetime.datetime.fromtimestamp(time.mktime(dt.date().timetuple()))
+			if tt[1] == 1: dt = self._date_to_datetime(dt.date())
 			return dt
 		parsers.append(_pdt_parse)
 	except: pass
