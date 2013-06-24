@@ -169,7 +169,7 @@ class WorkLogDB:
 
 		return "Empty DB - couldn't edit!"
 
-	def entries_since(self, since):
+	def entries_since(self, since, comment=''):
 		"""Iterator for all entries. Yields a hashmap with the data"""
 		stmt = self.db.cursor()
 
@@ -183,9 +183,12 @@ class WorkLogDB:
 				id
 			FROM worklog
 			WHERE
-				start > DATETIME(?)
+				start > DATETIME(?) AND
+				comment LIKE ?
 		"""
-		stmt.execute(query, (since,))
+
+		comment = '%' + '%'.join(comment.split(' ')) + '%';
+		stmt.execute(query, (since, comment))
 		self.db.commit()
 
 
@@ -260,18 +263,18 @@ class WorkLogDB:
 		parsers.append(_pdt_parse)
 	except: pass
 
-	def list_since(self, since, showdate):
+	def list_since(self, since, showdate, query=''):
 		for parse in self.parsers:
 			try:
 				since = parse(self, since)
 			except: pass
-			else: return self.do_list_since(since, showdate)
+			else: return self.do_list_since(since, showdate, query)
 		print "Could not parse '%s' as a time string" % since
 		if not hasattr(self, '_pdt'):
 			print "For better datetime parsing please install parsedatetime from https://github.com/bear/parsedatetime"
 		sys.exit(1)
 
-	def do_list_since(self, dt, showdate):
+	def do_list_since(self, dt, showdate, query):
 		now = datetime.datetime.now()
 		if dt > now:
 			oneweek = datetime.timedelta(weeks=1)
@@ -281,7 +284,7 @@ class WorkLogDB:
 		out = "Listing work since %s\n\n" % dt
 
 		total_time = 0
-		for entry in self.entries_since(dt):
+		for entry in self.entries_since(dt, query):
 			total_time += entry['duration']
 
 			if entry['unfinished']:
@@ -306,15 +309,19 @@ def show_help(error = None):
 	print("Available actions:")
 	print("  work on <task-description>     -- start working on given task description, stop any previous task")
 	print("  work on --ask                  -- stop any previous task, shows a dialog for entering your current task")
-	print("  work done                      -- stop current task")
+	print("  work over                      -- stop current task")
 	print("  work today                     -- list all tasks recorded today")
-	print("  work list                      -- list all recorded tasks")
 	print("  work reset                     -- removes last task")
 	print("  work resume                    -- resumes the last logged task")
 	print("  work resume <id>               -- resumes task with given id")
 	print("  work edit <task-description>   -- edits text of last task")
-	print("  work since yyyy-mm-dd          -- list all tasks since the given date")
 	print("  work sum                       -- Sum of work time, grouped by day")
+	print("  work since <date/time>         -- list all tasks since the given date")
+	print("  work done since <datetime>     -- list work done since <time>")
+	print("  work done on <subject>         -- list work done with comments that match 'subject'")
+	print("  work done since <time> on <subject>")
+
+
 	print("")
 	print("Work today: ")
 	print(log.list_since('now', False))
@@ -328,6 +335,26 @@ def ask(question):
 		'--text=%s' % question
 	]
 	return subprocess.check_output(command).strip().decode('utf8')
+
+def parse_query(query):
+	since_idx = -1
+	on_idx = -1
+	query = query.split(' ')
+
+	try:
+		on_idx = query.index('on')
+		on = " ".join(query[on_idx+1:])
+	except:
+		on_idx = len(query)
+		on = ''
+
+	try:
+		since_idx = query.index('since')
+		since = " ".join(query[since_idx+1:on_idx])
+	except:
+		since = '1970-01-01'
+
+	return (since, on)
 
 if __name__ == '__main__':
 	# action is first argument, rest is comment
@@ -351,7 +378,7 @@ if __name__ == '__main__':
 			print("New entry stored.\n\n")
 			print(log.list_since('now', False))
 
-	elif action == 'done':
+	elif action == 'over':
 		log.close_existing()
 		print("Stopped tracking.")
 
@@ -372,8 +399,14 @@ if __name__ == '__main__':
 	elif action == 'sum':
 		print(log.sum_since('1970-01-01')),
 
-	elif action == 'list':
-		print(log.list_since('1970-01-01', True)),
+	elif action == 'done' or action == 'since':
+		if action == 'since': comment = 'since ' + comment
+		since, on = parse_query(comment)
+		if on != '' or since != '':
+			print(log.list_since(since, True, on))
+		else:
+			show_help('I need an argument! For example: ' +
+			          'work done since yesterday on something')
 
 	elif action == 'reset':
 		print(log.reset_last()),
@@ -384,11 +417,6 @@ if __name__ == '__main__':
 		else:
 			show_help("When editing, you should give me a new comment")
 
-	elif action == 'since':
-		if comment != '':
-			print(log.list_since(comment, True)),
-		else:
-			show_help("When listing work since someday, you should give me a date")
 	else:
 		show_help("Unknown action: %s" % action)
 

@@ -16,7 +16,7 @@ it. Then, you can issue the following commands to track your work:
 
     work on <task-description>     -- start working on given task description, stop any previous task
     work edit <task-description>   -- edits text of last task
-    work done                      -- stop current task
+    work over                      -- stop current task
     work resume                    -- resumes the last logged task
     work resume <id>               -- resumes task with given id (see work since, work today etc.)
     work reset                     -- removes last task
@@ -25,9 +25,12 @@ There are also a few commands available to list / analyze what you've
 done in the past:
 
     work today                     -- list all tasks recorded today
-    work list                      -- list all recorded tasks
-    work since yyyy-mm-dd          -- list all tasks since the given date
+    work since <date/time>         -- list all tasks since the given date
     work sum                       -- Sum of work time, grouped by day
+    work done                      -- list all recorded tasks
+    work done since <date/time>    -- list work done since <time>
+    work done on <subject>         -- list work done with comments that match 'subject'
+    work done since <date/time> on <subject>
 
 If you install parsedatetime from https://github.com/bear/parsedatetime you can
 also do:
